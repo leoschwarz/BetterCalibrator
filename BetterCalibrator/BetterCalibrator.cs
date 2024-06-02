@@ -15,7 +15,7 @@ public class BetterCalibrator : IPositionedPipelineElement<IDeviceReport> {
     [Resolved]
     public IDriver driver;
 
-    OffsetInfo info = new OffsetInfo();
+    OffsetInfo info = new();
 
     /*[Property("Calibration Data"), DefaultPropertyValue("{\"cols\":5,\"offsets\":[[3.5,-26],[5.5,-26],[5.5,-27],[5.5,-25],[8,-27],[4.5,-26.5],[4.5,-29.5],[5.5,-25.5],[3.5,-26.5],[388,-25.5],[5.5,-26.5],[5.5,-25.5],[5.5,-23.5],[2.5,-21.5],[0,-25.5]],\"rows\":3}")]
     public string Data {
