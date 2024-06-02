@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using OpenTabletDriver;
 using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Attributes;
@@ -15,7 +16,9 @@ public class BetterCalibrator : IPositionedPipelineElement<IDeviceReport> {
     [Resolved]
     public IDriver driver;
 
-    OffsetInfo info = new();
+    //OffsetInfo info = new();
+
+    FittedModel model = new();
 
     /*[Property("Calibration Data"), DefaultPropertyValue("{\"cols\":5,\"offsets\":[[3.5,-26],[5.5,-26],[5.5,-27],[5.5,-25],[8,-27],[4.5,-26.5],[4.5,-29.5],[5.5,-25.5],[3.5,-26.5],[388,-25.5],[5.5,-26.5],[5.5,-25.5],[5.5,-23.5],[2.5,-21.5],[0,-25.5]],\"rows\":3}")]
     public string Data {
@@ -90,6 +93,7 @@ public class BetterCalibrator : IPositionedPipelineElement<IDeviceReport> {
     private void try_resolve_output_mode() {
         if(!parsed) {
             parsed = true;
+            /*
             try {
                 using(StreamReader reader = new StreamReader(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/offsets.json")) {
                     string json = reader.ReadToEnd();
@@ -98,7 +102,14 @@ public class BetterCalibrator : IPositionedPipelineElement<IDeviceReport> {
             } catch (Exception exception) {
                 Log.Exception(exception);
             }
-            
+            */
+            try {
+                using StreamReader reader = new StreamReader(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "/model.json");
+                string json = reader.ReadToEnd();
+                model = JsonSerializer.Deserialize<FittedModel>(json);
+            } catch (Exception exception) {
+                Log.Exception(exception);
+            }
         }
         if (driver is Driver drv)
         {
@@ -165,6 +176,7 @@ public class BetterCalibrator : IPositionedPipelineElement<IDeviceReport> {
     }
 
     public Vector2 filter(Vector2 input) {
+        /*
         if(info != null) {
             Vector2 pos = to_pixel(input);
             var display = absolute_output_mode.Output;
@@ -193,16 +205,42 @@ public class BetterCalibrator : IPositionedPipelineElement<IDeviceReport> {
             final -= absolute_output_mode.Output.Position - (new Vector2(absolute_output_mode.Output.Width, absolute_output_mode.Output.Height) / 2f);
             input -= from_pixel(final);
         }
+        */
+        if (model != null) {
+            // print the model params
+            //Console.WriteLine($"Model: {model.ScaleX}, {model.ScaleY}, {model.TranslateX}, {model.TranslateY}");
+
+            Vector2 pos = to_pixel(input);
+            pos = model.Apply(pos);
+            input = from_pixel(pos);
+        }
         return input;
     }
 
     public PipelinePosition Position => PipelinePosition.PostTransform;
 }
 
+/*
 public class OffsetInfo {
     public int cols { get; set; }
     public int rows { get; set; }
     public float[][] offsets { get; set; }
+}
+*/
+
+public class FittedModel {
+    [JsonPropertyName("sx")]
+    public float ScaleX { get; set; }
+    [JsonPropertyName("sy")]
+    public float ScaleY { get; set; }
+    [JsonPropertyName("tx")]
+    public float TranslateX { get; set; }
+    [JsonPropertyName("ty")]
+    public float TranslateY { get; set; }
+
+    public Vector2 Apply(Vector2 input) {
+        return new Vector2(input.X * ScaleX + TranslateX, input.Y * ScaleY + TranslateY);
+    }
 }
 
 enum OutputModeType {
