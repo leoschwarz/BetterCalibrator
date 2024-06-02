@@ -10,14 +10,18 @@ var current_target = 0
 var data = {
 	cols = 0,
 	rows = 0,
-	offsets = []
+	offsets = [],
+	centers_display = [],
+	centers_pressed = []
 }
 
 func reset():
 	data = {
 		cols = 0,
 		rows = 0,
-		offsets = []
+		offsets = [],
+		centers_display = [],
+		centers_pressed = []
 	}
 	
 	current_target = 0
@@ -57,11 +61,10 @@ var just_pressed = false
 
 func _on_gui_input(event):
 	if event is InputEventMouseButton && event.is_pressed() && event.get_button_index() == MOUSE_BUTTON_MIDDLE:
-		if DisplayServer.window_get_current_screen() == DisplayServer.get_screen_count() - 1:
-			DisplayServer.window_set_current_screen(0)
-		else:
-			DisplayServer.window_set_current_screen(DisplayServer.window_get_current_screen() + 1)
-	if event is InputEventMouseButton && event.get_button_index() != MOUSE_BUTTON_MIDDLE:
+		# TODO broken https://github.com/godotengine/godot/issues/73020
+		var next_screen = (DisplayServer.window_get_current_screen() + 1) % DisplayServer.get_screen_count()
+		DisplayServer.window_set_current_screen(next_screen)
+	elif event is InputEventMouseButton:
 		if not(just_pressed):
 			just_pressed = true
 			save_offset(targets[current_target], event.position)
@@ -69,12 +72,19 @@ func _on_gui_input(event):
 		just_pressed = event.is_pressed()
 	if current_target >= len(targets):
 		save_offset_file()
-	
+		
+func _input(event):
+	if event.is_action_pressed("ui_cancel"):
+		get_tree().quit()
+		
+
 func save_offset(target, pos: Vector2):
 	var center = target.position
 	center.x += target.size.x/2
 	center.y += target.size.y/2
 	var offset = center - pos
+	data.centers_display.push_back([center.x, center.y])
+	data.centers_pressed.push_back([pos.x, pos.y])
 	data.offsets.push_back([offset.x, offset.y])
 
 func save_offset_file():
