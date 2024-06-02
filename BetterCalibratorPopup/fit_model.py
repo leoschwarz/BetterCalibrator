@@ -11,8 +11,8 @@ def main() -> None:
     centers_display = np.array(input_offsets_data["centers_display"])
     centers_pressed = np.array(input_offsets_data["centers_pressed"])
 
-    A = construct_matrix_A(vec=centers_pressed, vec_dash=centers_display)
-    b = construct_vector_b(vec=centers_pressed, vec_dash=centers_display)
+    A = construct_matrix_A(vec=centers_pressed) 
+    b = construct_vector_b(vec_dash=centers_display)
 
     # solve the least squares problem
     x = np.linalg.lstsq(A, b, rcond=None)[0].ravel()
@@ -25,11 +25,21 @@ def main() -> None:
         "ty": x[3]
     }
     print(f"Fitted model: {repr(output)}")
+
+    # estimate the error
+    centers_display_estimated = np.array([
+        [x * output["sx"] + output["tx"], y * output["sy"] + output["ty"]]
+        for [x, y] in centers_pressed
+    ])
+    errors = centers_display_estimated - centers_display
+    print(errors)
+    print(f"Mean abs error X, Y: {np.mean(np.abs(errors), axis=0)}")
+
     output_model_path = base_dir / "model.json"
     output_model_path.write_text(json.dumps(output, indent=4))
 
 
-def construct_matrix_A(vec: np.ndarray, vec_dash: np.ndarray) -> np.ndarray:
+def construct_matrix_A(vec: np.ndarray) -> np.ndarray:
     n_points = vec.shape[0]
     A = np.zeros((2 * n_points, 4))
     for i in range(n_points):
@@ -37,8 +47,8 @@ def construct_matrix_A(vec: np.ndarray, vec_dash: np.ndarray) -> np.ndarray:
         A[2 * i + 1] = np.array([0, vec[i][1], 0, 1])
     return A
 
-def construct_vector_b(vec: np.ndarray, vec_dash: np.ndarray) -> np.ndarray:
-    n_points = vec.shape[0]
+def construct_vector_b(vec_dash: np.ndarray) -> np.ndarray:
+    n_points = vec_dash.shape[0]
     b = np.zeros((2 * n_points, 1))
     for i in range(n_points):
         b[2 * i] = vec_dash[i][0]
